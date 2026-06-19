@@ -45,7 +45,930 @@ function fmtMoney(n) {
 function sign(n) { return n >= 0 ? '+' : ''; }
 function deltaClass(v, low=false) { return low ? (v <= 0 ? 'up' : 'down') : (v >= 0 ? 'up' : 'down'); }
 
+// ── Client-Side Demo Engine Fallback ───────────
+let isDemoMode = false;
+const demoData = {
+  campaigns: [],
+  kpis: null,
+  market: null,
+  retention: null,
+  abtests: [],
+  alerts: null
+};
+
+const getBaseUrl = () => {
+  const path = window.location.pathname;
+  const directory = path.substring(0, path.lastIndexOf('/') + 1);
+  return window.location.origin + directory;
+};
+
+async function initDemoMode() {
+  isDemoMode = true;
+  console.log('[DemoMode] Initializing client-side engine...');
+  const baseUrl = getBaseUrl();
+  try {
+    const [c, k, m, r, ab, al] = await Promise.all([
+      fetch(baseUrl + 'server/data/campaigns.json').then(res => res.json()),
+      fetch(baseUrl + 'server/data/kpis.json').then(res => res.json()),
+      fetch(baseUrl + 'server/data/market.json').then(res => res.json()),
+      fetch(baseUrl + 'server/data/retention.json').then(res => res.json()),
+      fetch(baseUrl + 'server/data/abtests.json').then(res => res.json()),
+      fetch(baseUrl + 'server/data/alerts.json').then(res => res.json())
+    ]);
+    demoData.campaigns = c;
+    demoData.kpis = k;
+    demoData.market = m;
+    demoData.retention = r;
+    demoData.abtests = ab;
+    demoData.alerts = al;
+    
+    campaignStoreLocal = [...c];
+
+    console.log('[DemoMode] Loaded all static data successfully.');
+    startDemoSocketSimulation();
+    
+    await loadOverview();
+    loadTable();
+    loadNotifications();
+    showToast('🌿 Client-Side Analytics Engine (Demo) Online', 'success');
+  } catch (err) {
+    console.error('[DemoMode] Failed to load static files:', err);
+    showToast('Error initializing client-side demo mode', 'error');
+  }
+}
+
+let demoSocketInterval = null;
+function startDemoSocketSimulation() {
+  if (demoSocketInterval) clearInterval(demoSocketInterval);
+  
+  const wsEl = document.getElementById('ws-status');
+  if (wsEl) {
+    wsEl.textContent = '⬤ Demo';
+    wsEl.className   = 'ti-val ws-status connected';
+  }
+  
+  const EVENT_POOLS = [
+    () => ({ type:'booking',    icon:'🧭', message:`New booking: ${randomTrail()}`,          detail:`₹${(Math.random()*8000+2000).toFixed(0)} · ${randomRegion()}` }),
+    () => ({ type:'conversion', icon:'🎯', message:`${randomCampaign()} converted`,           detail:`Channel: ${randomChannel()}` }),
+    () => ({ type:'referral',   icon:'👥', message:`Summit Member referral activated`,         detail:`+1 user · ${randomRegion()}` }),
+    () => ({ type:'signup',     icon:'🌱', message:`New Seedling signed up`,                   detail:`Via ${randomChannel()} · ${randomRegion()}` }),
+    () => ({ type:'review',     icon:'⭐', message:`5-star review: ${randomTrail()}`,          detail:`NPS impact: +0.1` }),
+    () => ({ type:'milestone',  icon:'🏆', message:`${randomCampaign()} hit 10K conversions`, detail:`ROI target exceeded` }),
+    () => ({ type:'alert',      icon:'🔔', message:`CPA trending up — ${randomCampaign()}`,   detail:`Current: ₹${(Math.random()*200+700).toFixed(0)}` }),
+    () => ({ type:'abtest',     icon:'🧪', message:`A/B test variant B gaining significance`, detail:`p < 0.05 reached` }),
+  ];
+
+  const TRAILS    = ['Hampta Pass Trek', 'Valley of Flowers', 'Kudremukh Trek', 'Dzukou Valley', 'Aravalli Safari', 'Coorg Trail', 'Roopkund Trek'];
+  const REGIONS   = ['Mumbai', 'Bangalore', 'Delhi', 'Pune', 'Hyderabad', 'Chennai', 'Kolkata', 'Ahmedabad'];
+  const CHANNELS  = ['Instagram', 'YouTube', 'Google', 'Email', 'Referral Link', 'WhatsApp'];
+  const CAMPAIGNS = ['#TrailsOfIndia', 'EcoHiker Collab', 'Monsoon Newsletter', 'Summit Referral'];
+
+  const randomTrail    = () => TRAILS[Math.floor(Math.random() * TRAILS.length)];
+  const randomRegion   = () => REGIONS[Math.floor(Math.random() * REGIONS.length)];
+  const randomChannel  = () => CHANNELS[Math.floor(Math.random() * CHANNELS.length)];
+  const randomCampaign = () => CAMPAIGNS[Math.floor(Math.random() * CAMPAIGNS.length)];
+
+  let liveKPIState = { ...demoData.kpis.liveKPIs };
+  
+  const updateLiveKPIs = () => {
+    liveKPIState.activeUsers   = Math.max(800, liveKPIState.activeUsers   + Math.floor(Math.random()*30 - 12));
+    liveKPIState.trailsBooked  = Math.max(200, liveKPIState.trailsBooked  + Math.floor(Math.random()*8  - 3));
+    liveKPIState.revenueToday  = Math.max(100000, liveKPIState.revenueToday + Math.floor(Math.random()*8000 - 3000));
+    liveKPIState.avgSessionMin = Math.max(4, +(liveKPIState.avgSessionMin + (Math.random()*0.4 - 0.2)).toFixed(1));
+    return { ...liveKPIState, timestamp: new Date().toISOString() };
+  };
+
+  demoSocketInterval = setInterval(() => {
+    const kpi = updateLiveKPIs();
+    animateTicker('tk-users',   kpi.activeUsers.toLocaleString('en-IN'));
+    animateTicker('tk-booked',  kpi.trailsBooked.toLocaleString('en-IN'));
+    animateTicker('tk-revenue', fmtMoney(kpi.revenueToday));
+    animateTicker('tk-session', kpi.avgSessionMin + ' min');
+    
+    if (Math.random() > 0.4) {
+      const idx = Math.floor(Math.random() * EVENT_POOLS.length);
+      const eventData = EVENT_POOLS[idx]();
+      addFeedItem(eventData);
+      
+      if (eventData.type === 'alert' && Math.random() > 0.7) {
+        showToast('⚠️ Anomaly detected in KPI stream', 'error', 4000);
+      }
+    }
+  }, 4000);
+}
+
+async function handleDemoRequest(path, opts={}) {
+  const url = new URL(path, 'http://mock');
+  const pathname = url.pathname;
+  const method = opts.method ? opts.method.toUpperCase() : 'GET';
+  
+  console.log(`[Demo API] ${method} ${pathname}`);
+  
+  if (method === 'GET') {
+    if (pathname === '/health') {
+      return {
+        status: 'ok',
+        server: 'GreenTrail Analytics Engine v3.0 (Demo Mode)',
+        version: '3.0.0',
+        uptime: '0s',
+        timestamp: new Date().toISOString(),
+        connectedClients: 0,
+        cacheStats: {},
+        features: ['client-side-simulation', 'budget-optimizer', 'predictive-forecasts'],
+        endpoints: {}
+      };
+    }
+    
+    if (pathname === '/overview') {
+      const q2 = demoData.kpis.quarters['Q2-2026'];
+      const q1 = demoData.kpis.quarters['Q1-2026'];
+      const active = demoData.campaigns.filter(c => c.status === 'active').length;
+      return {
+        success: true,
+        data: {
+          kpis: {
+            totalUsers:    { value: q2.totalUsers,    prev: q1.totalUsers,    change: +(((q2.totalUsers    - q1.totalUsers)    / q1.totalUsers    ) * 100).toFixed(1) },
+            campaignReach: { value: q2.campaignReach, prev: q1.campaignReach, change: +(((q2.campaignReach - q1.campaignReach) / q1.campaignReach ) * 100).toFixed(1) },
+            promoROI:      { value: q2.promoROI,      prev: q1.promoROI,      change: +(q2.promoROI      - q1.promoROI     ).toFixed(1) },
+            retentionRate: { value: q2.retentionRate, prev: q1.retentionRate, change: +(q2.retentionRate - q1.retentionRate).toFixed(1) },
+            npsScore:      { value: q2.npsScore,      prev: q1.npsScore,      change: q2.npsScore       - q1.npsScore      },
+            greenScore:    { value: q2.greenScore,     prev: q1.greenScore,    change: q2.greenScore      - q1.greenScore   },
+            totalRevenue:  { value: q2.totalRevenue,   prev: q1.totalRevenue,  change: +(((q2.totalRevenue - q1.totalRevenue) / q1.totalRevenue) * 100).toFixed(1) },
+            cpa:           { value: q2.cpa,            prev: q1.cpa,           change: +(q2.cpa            - q1.cpa         ).toFixed(0) }
+          },
+          campaigns: { total: demoData.campaigns.length, active },
+          timeSeries: {
+            labels:      ['Jan','Feb','Mar','Apr','May','Jun'],
+            userGrowth:  [61200, 65400, 69800, 73500, 78900, 84320],
+            reachGrowth: [1200000, 1480000, 1620000, 1950000, 2180000, 2400000],
+            convGrowth:  [18000, 22000, 26000, 31000, 38000, 43000]
+          },
+          liveKPIs: demoData.kpis.liveKPIs
+        }
+      };
+    }
+    
+    if (pathname === '/campaigns/channels') {
+      const channelMap = {};
+      demoData.campaigns.forEach(c => {
+        if (!channelMap[c.channel]) channelMap[c.channel] = { reach: 0, spend: 0, conversions: 0, count: 0 };
+        channelMap[c.channel].reach += c.reach;
+        channelMap[c.channel].spend += c.spend;
+        channelMap[c.channel].conversions += c.conversions;
+        channelMap[c.channel].count += 1;
+      });
+      const totalReach = Object.values(channelMap).reduce((s, v) => s + v.reach, 0);
+      const result = Object.entries(channelMap).map(([channel, v]) => ({
+        channel,
+        reach: v.reach,
+        spend: v.spend,
+        conversions: v.conversions,
+        count: v.count,
+        sharePct: +((v.reach / totalReach) * 100).toFixed(1)
+      })).sort((a, b) => b.reach - a.reach);
+      return { success: true, data: result };
+    }
+    
+    if (pathname === '/analytics/bubble') {
+      const data = demoData.campaigns.map(c => ({
+        id:      c.id,
+        label:   c.name,
+        channel: c.channel,
+        x:       c.cpa,
+        y:       c.roi,
+        r:       Math.round(Math.sqrt(c.reach / 1000)),
+        status:  c.status,
+        spend:   c.spend,
+        revenue: c.revenue
+      }));
+      return {
+        success: true,
+        data,
+        axes: { x: 'Cost Per Acquisition (₹)', y: 'Return on Investment (×)', r: 'Reach (bubble size)' },
+        summary: {
+          avgCPA: Math.round(demoData.campaigns.reduce((s, c) => s + c.cpa, 0) / demoData.campaigns.length),
+          avgROI: +(demoData.campaigns.reduce((s, c) => s + c.roi, 0) / demoData.campaigns.length).toFixed(2),
+          bestEfficiency: demoData.campaigns.sort((a, b) => b.roi / a.cpa - a.roi / b.cpa)[0]?.name
+        }
+      };
+    }
+    
+    if (pathname === '/campaigns') {
+      const channel = url.searchParams.get('channel');
+      const status = url.searchParams.get('status');
+      const q = url.searchParams.get('q');
+      const sort = url.searchParams.get('sort');
+      
+      let result = [...demoData.campaigns];
+      if (channel) result = result.filter(c => c.channel.toLowerCase() === channel.toLowerCase());
+      if (status)  result = result.filter(c => c.status.toLowerCase() === status.toLowerCase());
+      if (q)       result = result.filter(c =>
+        c.name.toLowerCase().includes(q.toLowerCase()) ||
+        c.channel.toLowerCase().includes(q.toLowerCase()) ||
+        (c.tags || []).some(t => t.includes(q.toLowerCase()))
+      );
+
+      if (sort === 'roi')          result.sort((a, b) => b.roi - a.roi);
+      else if (sort === 'reach')   result.sort((a, b) => b.reach - a.reach);
+      else if (sort === 'spend')   result.sort((a, b) => b.spend - a.spend);
+      else if (sort === 'conv')    result.sort((a, b) => b.conversions - a.conversions);
+
+      const summary = {
+        total: result.length,
+        totalSpend: result.reduce((s, c) => s + c.spend, 0),
+        totalRevenue: result.reduce((s, c) => s + c.revenue, 0),
+        totalReach: result.reduce((s, c) => s + c.reach, 0),
+        totalConversions: result.reduce((s, c) => s + c.conversions, 0),
+        avgROI: result.length ? +(result.reduce((s, c) => s + c.roi, 0) / result.length).toFixed(2) : 0
+      };
+      return { success: true, summary, data: result };
+    }
+    
+    const campIdMatch = pathname.match(/^\/campaigns\/(camp-\d+)$/);
+    if (campIdMatch) {
+      const id = campIdMatch[1];
+      const camp = demoData.campaigns.find(c => c.id === id);
+      if (!camp) return { success: false, message: 'Campaign not found' };
+      const efficiencyScore = Math.round((camp.roi / 6) * 40 + (camp.engagementRate / 10) * 30 + (camp.performance / 100) * 30);
+      return { success: true, data: { ...camp, efficiencyScore } };
+    }
+    
+    if (pathname === '/market') {
+      const totalReach = demoData.market.funnel[0].users;
+      const bookings = demoData.market.funnel[demoData.market.funnel.length - 1].users;
+      return {
+        success: true,
+        data: {
+          segments: demoData.market.segments,
+          motivators: demoData.market.motivators,
+          competitors: demoData.market.competitors,
+          funnel: demoData.market.funnel,
+          geography: demoData.market.geography,
+          surveyMeta: demoData.market.surveyMeta
+        },
+        summary: {
+          totalReach,
+          bookings,
+          overallConversionRate: +((bookings / totalReach) * 100).toFixed(2),
+          marketLeader: 'GreenTrail',
+          marketShare: demoData.market.competitors[0].share
+        }
+      };
+    }
+    
+    if (pathname === '/market/funnel') {
+      const funnel = demoData.market.funnel.map((stage, i) => ({
+        ...stage,
+        dropOff: i > 0
+          ? +((1 - stage.users / demoData.market.funnel[i - 1].users) * 100).toFixed(1)
+          : 0
+      }));
+      return { success: true, data: funnel };
+    }
+    
+    if (pathname === '/market/geography') {
+      const total = demoData.market.geography.reduce((s, r) => s + r.bookings, 0);
+      const data = demoData.market.geography.map(r => ({
+        ...r,
+        sharePct: +((r.bookings / total) * 100).toFixed(1)
+      })).sort((a, b) => b.bookings - a.bookings);
+      return { success: true, data, totalBookings: total };
+    }
+    
+    if (pathname === '/analytics/forecast') {
+      const metric = url.searchParams.get('metric') || 'roi';
+      const periods = Math.min(parseInt(url.searchParams.get('quarters')) || 4, 8);
+      const quarters = Object.keys(demoData.kpis.quarters);
+
+      const metricMap = {
+        roi:           quarters.map(q => demoData.kpis.quarters[q].promoROI),
+        users:         quarters.map(q => demoData.kpis.quarters[q].totalUsers),
+        retention:     quarters.map(q => demoData.kpis.quarters[q].retentionRate),
+        nps:           quarters.map(q => demoData.kpis.quarters[q].npsScore),
+        revenue:       quarters.map(q => demoData.kpis.quarters[q].totalRevenue / 100000), // in lakhs
+        cpa:           quarters.map(q => demoData.kpis.quarters[q].cpa),
+        emailOpenRate: quarters.map(q => demoData.kpis.quarters[q].emailOpenRate)
+      };
+
+      const historical = metricMap[metric] || metricMap.roi;
+      
+      const lreg = (y) => {
+        const n  = y.length;
+        const x  = Array.from({ length: n }, (_, i) => i);
+        const sx = x.reduce((a, b) => a + b, 0);
+        const sy = y.reduce((a, b) => a + b, 0);
+        const sxy = x.reduce((a, xi, i) => a + xi * y[i], 0);
+        const sxx = x.reduce((a, xi) => a + xi * xi, 0);
+        const slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+        const intercept = (sy - slope * sx) / n;
+        return { slope, intercept };
+      };
+      
+      const { slope, intercept } = lreg(historical);
+      const n = historical.length;
+      const predictions = [];
+      for (let i = 0; i < periods; i++) {
+        const predicted = intercept + slope * (n + i);
+        const confidence = 0.08 + i * 0.023;
+        predictions.push({
+          value: +predicted.toFixed(2),
+          lower: +(predicted * (1 - confidence)).toFixed(2),
+          upper: +(predicted * (1 + confidence)).toFixed(2)
+        });
+      }
+
+      const futureLabels = [];
+      const lastQ   = quarters[quarters.length - 1];
+      const [qPart, yPart] = lastQ.split('-');
+      const qNum = parseInt(qPart.replace('Q',''));
+      for (let i = 0; i < periods; i++) {
+        let q = qNum + i + 1, y = parseInt(yPart);
+        while (q > 4) { q -= 4; y++; }
+        futureLabels.push(`Q${q}-${y}`);
+      }
+
+      return {
+        success: true,
+        metric,
+        historical: { labels: quarters, values: historical },
+        forecast: {
+          labels: futureLabels,
+          predictions: predictions,
+          values: predictions,
+          slope: +slope.toFixed(4),
+          intercept: +intercept.toFixed(4),
+          trend: slope > 0 ? 'upward' : 'downward',
+          trendStrength: Math.abs(slope) > 1 ? 'strong' : Math.abs(slope) > 0.3 ? 'moderate' : 'weak'
+        }
+      };
+    }
+    
+    if (pathname === '/analytics/ltv') {
+      const segments = demoData.market.segments;
+      const tiers    = demoData.retention.loyaltyTiers;
+
+      const segmentLTV = segments.map(s => {
+        const bookingsPerYear  = s.avgSpend > 5000 ? 3.2 : s.avgSpend > 3000 ? 2.4 : 1.8;
+        const retentionYears   = s.growth > 20 ? 2.1 : s.growth > 10 ? 1.8 : 1.4;
+        const ltv              = Math.round(s.avgSpend * bookingsPerYear * retentionYears);
+        const acquisitionCost  = Math.round(ltv * 0.18);
+        return { label: s.label, pct: s.pct, avgSpend: s.avgSpend, ltv, acquisitionCost, ltvCacRatio: +(ltv / acquisitionCost).toFixed(1) };
+      });
+
+      const tierLTV = tiers.map(t => {
+        const bookingsPerYear = t.tier.includes('Elite') ? 5.8 : t.tier.includes('Summit') ? 3.6 : t.tier.includes('Trailblazer') ? 2.2 : 1.2;
+        const retentionYears  = t.tier.includes('Elite') ? 3.8 : t.tier.includes('Summit') ? 2.8 : t.tier.includes('Trailblazer') ? 2.1 : 1.3;
+        const ltv             = Math.round(t.avgRevenue * bookingsPerYear * retentionYears);
+        return { ...t, bookingsPerYear, retentionYears, ltv };
+      });
+
+      return {
+        success: true,
+        data: { segments: segmentLTV, tiers: tierLTV },
+        summary: {
+          avgPlatformLTV: Math.round(segmentLTV.reduce((s, v) => s + v.ltv * v.pct / 100, 0)),
+          highestLTVSegment: segmentLTV.sort((a, b) => b.ltv - a.ltv)[0].label,
+          highestLTVTier: tierLTV.sort((a, b) => b.ltv - a.ltv)[0].tier
+        }
+      };
+    }
+    
+    if (pathname === '/analytics/anomalies') {
+      const quarters = Object.keys(demoData.kpis.quarters);
+
+      function detectAnomaly(values, metricName, unit = '') {
+        const mean  = values.reduce((a, b) => a + b, 0) / values.length;
+        const std   = Math.sqrt(values.reduce((s, v) => s + Math.pow(v - mean, 2), 0) / values.length);
+        const zScores = values.map(v => Math.abs((v - mean) / (std || 1)));
+        const latest = values[values.length - 1];
+        const latestZ = zScores[zScores.length - 1];
+        const trend  = values[values.length - 1] - values[values.length - 2];
+        return {
+          metric: metricName,
+          unit,
+          values,
+          mean: +mean.toFixed(2),
+          std: +std.toFixed(2),
+          latest,
+          zScore: +latestZ.toFixed(2),
+          trend: +trend.toFixed(2),
+          isAnomaly: latestZ > 1.5,
+          severity: latestZ > 2.5 ? 'critical' : latestZ > 1.5 ? 'warning' : 'normal',
+          direction: trend >= 0 ? 'up' : 'down'
+        };
+      }
+
+      const anomalies = [
+        detectAnomaly(quarters.map(q => demoData.kpis.quarters[q].promoROI),         'Promo ROI',           '×'),
+        detectAnomaly(quarters.map(q => demoData.kpis.quarters[q].retentionRate),     'Retention Rate',      '%'),
+        detectAnomaly(quarters.map(q => demoData.kpis.quarters[q].npsScore),          'NPS Score',           ''),
+        detectAnomaly(quarters.map(q => demoData.kpis.quarters[q].cpa),               'Cost Per Acquisition','₹'),
+        detectAnomaly(quarters.map(q => demoData.kpis.quarters[q].emailOpenRate),     'Email Open Rate',     '%'),
+        detectAnomaly(quarters.map(q => demoData.kpis.quarters[q].socialFollowerGrowth / 1000), 'Social Growth', 'K'),
+        detectAnomaly(quarters.map(q => demoData.kpis.quarters[q].totalRevenue / 100000),       'Revenue',       '₹L'),
+      ].sort((a, b) => b.zScore - a.zScore);
+
+      return {
+        success: true,
+        data: anomalies,
+        summary: {
+          totalMetrics: anomalies.length,
+          anomaliesDetected: anomalies.filter(a => a.isAnomaly).length,
+          criticalCount: anomalies.filter(a => a.severity === 'critical').length
+        }
+      };
+    }
+    
+    if (pathname === '/analytics/heatmap') {
+      const days  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const hours = Array.from({ length: 24 }, (_, i) => i);
+      const dayWeights  = [0.7, 0.75, 0.8, 0.85, 1.0, 1.4, 1.2];
+      const hourWeights = hours.map(h => {
+        if (h < 6)  return 0.05;
+        if (h < 9)  return 0.4;
+        if (h < 12) return 0.75;
+        if (h < 14) return 0.8;
+        if (h < 18) return 0.65;
+        if (h < 22) return 1.0;
+        return 0.3;
+      });
+
+      const heatmap = days.map((day, di) => ({
+        day,
+        hours: hours.map((h, hi) => {
+          const base   = 120;
+          const noise  = Math.random() * 20 - 10;
+          const value  = Math.round(base * dayWeights[di] * hourWeights[hi] + noise);
+          return { hour: h, value: Math.max(0, value) };
+        })
+      }));
+
+      const flat   = heatmap.flatMap(d => d.hours.map(h => h.value));
+      const maxVal = Math.max(...flat);
+      const minVal = Math.min(...flat.filter(v => v > 0));
+
+      return {
+        success: true,
+        data: heatmap,
+        meta: { days, hours, maxValue: maxVal, minValue: minVal, peakHour: 20, peakDay: 'Saturday' }
+      };
+    }
+    
+    if (pathname === '/analytics/cohort-revenue') {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+      const tiers  = demoData.retention.loyaltyTiers;
+      const data = tiers.map(t => ({
+        tier:  t.tier,
+        color: t.color,
+        monthly: months.map((m, i) => {
+          const base   = t.avgRevenue * t.count / 12;
+          const growth = 1 + (i * 0.04);
+          return Math.round(base * growth / 100000);
+        })
+      }));
+      return { success: true, labels: months, data };
+    }
+    
+    if (pathname === '/analytics/attribution') {
+      const model = url.searchParams.get('model') || 'linear';
+      const channels = ['Social Media', 'Influencer', 'Email', 'Search', 'Referral', 'Display Ads', 'Content'];
+      const journeyData = {
+        touchCounts:  [38, 28, 14, 20, 22, 18, 12],
+        firstTouches: [34, 12, 8,  22, 16, 4,  4],
+        lastTouches:  [22, 28, 18, 16, 10, 4,  2],
+        totalRevenue: 20610000
+      };
+
+      let credits;
+      switch (model) {
+        case 'first_touch':
+          credits = journeyData.firstTouches.map(v => v / journeyData.firstTouches.reduce((a,b)=>a+b,0) * 100);
+          break;
+        case 'last_touch':
+          credits = journeyData.lastTouches.map(v => v / journeyData.lastTouches.reduce((a,b)=>a+b,0) * 100);
+          break;
+        case 'time_decay':
+          const decayWeights = [0.05, 0.10, 0.15, 0.20, 0.25, 0.15, 0.10];
+          const decayBase    = journeyData.touchCounts.map((t, i) => t * decayWeights[i % decayWeights.length]);
+          const decayTotal   = decayBase.reduce((a, b) => a + b, 0);
+          credits            = decayBase.map(v => +((v / decayTotal) * 100).toFixed(1));
+          break;
+        default:
+          const touchTotal = journeyData.touchCounts.reduce((a, b) => a + b, 0);
+          credits = journeyData.touchCounts.map(v => +((v / touchTotal) * 100).toFixed(1));
+      }
+
+      const attributedRevenue = credits.map(c => Math.round((c / 100) * journeyData.totalRevenue));
+
+      return {
+        success: true,
+        model,
+        availableModels: ['first_touch', 'last_touch', 'linear', 'time_decay'],
+        data: channels.map((ch, i) => ({
+          channel: ch,
+          credit: +credits[i].toFixed(1),
+          revenue: attributedRevenue[i],
+          touchCount: journeyData.touchCounts[i]
+        })).sort((a, b) => b.credit - a.credit),
+        summary: { totalRevenue: journeyData.totalRevenue, model }
+      };
+    }
+    
+    if (pathname === '/abtests') {
+      return {
+        success: true,
+        summary: {
+          total:     demoData.abtests.length,
+          running:   demoData.abtests.filter(t => t.status === 'running').length,
+          completed: demoData.abtests.filter(t => t.status === 'completed').length,
+          highSig:   demoData.abtests.filter(t => t.stats.significance === 'high').length,
+          avgLift:   +(demoData.abtests.reduce((s, t) => s + t.stats.lift, 0) / demoData.abtests.length).toFixed(1)
+        },
+        data: demoData.abtests
+      };
+    }
+    
+    if (pathname === '/optimizer/scenarios') {
+      const base = 5420000;
+      const scenarios = [
+        {
+          name: 'Conservative',
+          description: 'Protect proven channels. Minimize risk.',
+          totalBudget: base * 0.85,
+          mix: [
+            { channel: 'Email',        pct: 30 },
+            { channel: 'Referral',     pct: 25 },
+            { channel: 'Social Media', pct: 20 },
+            { channel: 'Content',      pct: 15 },
+            { channel: 'Influencer',   pct: 10 }
+          ],
+          projectedROI: 3.4, risk: 'low', color: '#38bdf8'
+        },
+        {
+          name: 'Balanced',
+          description: 'Data-driven allocation across all channels.',
+          totalBudget: base,
+          mix: [
+            { channel: 'Influencer',   pct: 35 },
+            { channel: 'Social Media', pct: 25 },
+            { channel: 'Referral',     pct: 15 },
+            { channel: 'Email',        pct: 12 },
+            { channel: 'Search',       pct: 8  },
+            { channel: 'Content',      pct: 5  }
+          ],
+          projectedROI: 4.1, risk: 'medium', color: '#4ade80'
+        },
+        {
+          name: 'Aggressive',
+          description: 'Double down on highest-ROI channels.',
+          totalBudget: base * 1.3,
+          mix: [
+            { channel: 'Influencer',   pct: 50 },
+            { channel: 'Referral',     pct: 25 },
+            { channel: 'Social Media', pct: 15 },
+            { channel: 'Email',        pct: 10 }
+          ],
+          projectedROI: 4.8, risk: 'high', color: '#c084fc'
+        }
+      ];
+      const withRevenue = scenarios.map(s => ({
+        ...s,
+        projectedRevenue: Math.round(s.totalBudget * s.projectedROI)
+      }));
+      return { success: true, data: withRevenue };
+    }
+    
+    if (pathname === '/optimizer/budget') {
+      const total = parseInt(url.searchParams.get('total')) || 5420000;
+      
+      const channelMetrics = {};
+      demoData.campaigns.forEach(c => {
+        if (!channelMetrics[c.channel]) channelMetrics[c.channel] = { roi: [], cpa: [], reach: [], count: 0 };
+        channelMetrics[c.channel].roi.push(c.roi);
+        channelMetrics[c.channel].cpa.push(c.cpa);
+        channelMetrics[c.channel].reach.push(c.reach);
+        channelMetrics[c.channel].count++;
+      });
+
+      const channels = Object.keys(channelMetrics);
+      const scores   = channels.map(ch => {
+        const m      = channelMetrics[ch];
+        const avgROI = m.roi.reduce((a,b)=>a+b,0) / m.count;
+        const avgCPA = m.cpa.reduce((a,b)=>a+b,0) / m.count;
+        const avgR   = m.reach.reduce((a,b)=>a+b,0) / m.count;
+        return { channel: ch, score: avgROI * 10 - avgCPA / 200 + avgR / 500000, avgROI, avgCPA };
+      });
+
+      const totalScore = scores.reduce((s, c) => s + Math.max(0, c.score), 0);
+
+      const allocations = scores.map(ch => {
+        const pct       = Math.max(3, Math.round((Math.max(0, ch.score) / totalScore) * 100));
+        const amount    = Math.round((pct / 100) * total);
+        const projROI   = +(ch.avgROI * (1 + pct * 0.002)).toFixed(2);
+        const projRev   = Math.round(amount * projROI);
+        return { channel: ch.channel, pct, amount, projROI, projRevenue: projRev, avgCPA: ch.avgCPA };
+      });
+
+      const totalPct = allocations.reduce((s, a) => s + a.pct, 0);
+      allocations[0].pct += (100 - totalPct);
+
+      const projectedRevenue = allocations.reduce((s, a) => s + a.projRevenue, 0);
+      const projectedROI     = +(projectedRevenue / total).toFixed(2);
+      
+      const result = { allocations: allocations.sort((a,b) => b.pct - a.pct), projectedRevenue, projectedROI, totalBudget: total };
+
+      const current  = {
+        allocations: [
+          { channel: 'Influencer',   pct: 35, amount: Math.round(total*0.35), currentROI: 5.6 },
+          { channel: 'Social Media', pct: 25, amount: Math.round(total*0.25), currentROI: 4.1 },
+          { channel: 'Search',       pct: 15, amount: Math.round(total*0.15), currentROI: 2.9 },
+          { channel: 'Email',        pct: 10, amount: Math.round(total*0.10), currentROI: 3.2 },
+          { channel: 'Content',      pct: 8,  amount: Math.round(total*0.08), currentROI: 2.4 },
+          { channel: 'Referral',     pct: 7,  amount: Math.round(total*0.07), currentROI: 4.8 }
+        ],
+        projectedROI: 3.8,
+        projectedRevenue: Math.round(total * 3.8)
+      };
+
+      const uplift = {
+        roi: +(result.projectedROI - current.projectedROI).toFixed(2),
+        revenue: result.projectedRevenue - current.projectedRevenue,
+        roiPct: +(((result.projectedROI - current.projectedROI) / current.projectedROI) * 100).toFixed(1)
+      };
+
+      return { success: true, current, optimized: result, uplift };
+    }
+    
+    if (pathname === '/retention') {
+      return { success: true, data: demoData.retention };
+    }
+    
+    if (pathname === '/kpis') {
+      const quarter = url.searchParams.get('quarter') || 'Q2-2026';
+      const actual = demoData.kpis.quarters[quarter];
+      const target = demoData.kpis.targets[quarter];
+
+      if (!actual) return { success: false, message: `No data for quarter: ${quarter}` };
+
+      const scorecard = [
+        { kpi: 'Total Users', unit: '', actual: actual.totalUsers, target: target?.totalUsers, prev: demoData.kpis.quarters['Q1-2026']?.totalUsers },
+        { kpi: 'Campaign Reach', unit: '', actual: actual.campaignReach, target: target?.campaignReach, prev: demoData.kpis.quarters['Q1-2026']?.campaignReach },
+        { kpi: 'Promo ROI', unit: '×', actual: actual.promoROI, target: target?.promoROI, prev: demoData.kpis.quarters['Q1-2026']?.promoROI },
+        { kpi: 'Retention Rate', unit: '%', actual: actual.retentionRate, target: target?.retentionRate, prev: demoData.kpis.quarters['Q1-2026']?.retentionRate },
+        { kpi: 'NPS Score', unit: '', actual: actual.npsScore, target: target?.npsScore, prev: demoData.kpis.quarters['Q1-2026']?.npsScore },
+        { kpi: 'Green Score', unit: '/100', actual: actual.greenScore, target: target?.greenScore, prev: demoData.kpis.quarters['Q1-2026']?.greenScore },
+        { kpi: 'Cost Per Acquisition', unit: '₹', actual: actual.cpa, target: target?.cpa, prev: demoData.kpis.quarters['Q1-2026']?.cpa, lowerIsBetter: true },
+        { kpi: 'Email Open Rate', unit: '%', actual: actual.emailOpenRate, target: target?.emailOpenRate, prev: demoData.kpis.quarters['Q1-2026']?.emailOpenRate },
+        { kpi: 'Social Follower Growth', unit: '', actual: actual.socialFollowerGrowth, target: target?.socialFollowerGrowth, prev: demoData.kpis.quarters['Q1-2026']?.socialFollowerGrowth }
+      ].map(row => {
+        const variance = target ? (((row.actual - row.target) / row.target) * 100).toFixed(1) : null;
+        const pctChange = row.prev ? (((row.actual - row.prev) / row.prev) * 100).toFixed(1) : null;
+        let status = 'on-track';
+        if (target) {
+          const achieved = row.lowerIsBetter ? row.actual <= row.target : row.actual >= row.target;
+          const near = row.lowerIsBetter
+            ? row.actual <= row.target * 1.05
+            : row.actual >= row.target * 0.95;
+          status = achieved ? 'achieved' : near ? 'near' : 'miss';
+        }
+        return { ...row, variance, pctChange, status };
+      });
+
+      return {
+        success: true,
+        quarter,
+        available: Object.keys(demoData.kpis.quarters),
+        data: actual,
+        scorecard,
+        liveKPIs: demoData.kpis.liveKPIs
+      };
+    }
+    
+    if (pathname === '/kpis/trend') {
+      const quarters = Object.keys(demoData.kpis.quarters);
+      const trend = {
+        labels: quarters,
+        npsScore: quarters.map(q => demoData.kpis.quarters[q].npsScore),
+        retentionRate: quarters.map(q => demoData.kpis.quarters[q].retentionRate),
+        promoROI: quarters.map(q => demoData.kpis.quarters[q].promoROI),
+        totalUsers: quarters.map(q => demoData.kpis.quarters[q].totalUsers),
+        totalRevenue: quarters.map(q => demoData.kpis.quarters[q].totalRevenue),
+        cpa: quarters.map(q => demoData.kpis.quarters[q].cpa),
+        emailOpenRate: quarters.map(q => demoData.kpis.quarters[q].emailOpenRate)
+      };
+      return { success: true, data: trend };
+    }
+    
+    if (pathname === '/insights') {
+      const topCamp = [...demoData.campaigns].sort((a, b) => b.roi - a.roi)[0];
+      const topChurn = demoData.retention.churnReasons[0];
+
+      const insights = [
+        { id:'ins-001', priority:1, type:'opportunity', icon:'🚀', title:'Scale Influencer Program',
+          body:`${topCamp.name} delivered ${topCamp.roi}× ROI. Allocate 35% of Q3 budget to micro-influencer partnerships in Tier 2 cities.`,
+          impact:'+18% user acquisition', confidence:92, metric:{label:'Best Channel ROI', value:`${topCamp.roi}×`}, color:'#4ade80' },
+        { id:'ins-002', priority:2, type:'risk', icon:'🌿', title:'Expand Trail Inventory',
+          body:`${topChurn.pct}% of churned users cited "${topChurn.reason}". Partner with 15 new trail operators in Northeast India.`,
+          impact:'+6,000 retained users', confidence:88, metric:{label:'Top Churn Reason', value:`${topChurn.pct}%`}, color:'#a3e635' },
+        { id:'ins-003', priority:3, type:'action', icon:'📱', title:'Social Content Acceleration',
+          body:'Follower growth missed Q2 target by 18%. Introduce #MyGreenTrail UGC campaigns. Increase weekly Reel cadence to 5 posts.',
+          impact:'+15,000 net followers', confidence:79, metric:{label:'Social Target Miss', value:'-18%'}, color:'#38bdf8' },
+        { id:'ins-004', priority:4, type:'action', icon:'🎁', title:'Loyalty Tier Gamification',
+          body:'Peer referral converts at 43%. Add milestone badges and streak rewards for Summit+ members to drive tier upgrades.',
+          impact:'+22% tier upgrades', confidence:85, metric:{label:'Referral Conversion', value:'43%'}, color:'#c084fc' },
+        { id:'ins-005', priority:5, type:'opportunity', icon:'🗺️', title:'Northeast India Expansion',
+          body:'Northeast India shows +48.6% booking growth — fastest region. Target before monsoon peak with dedicated influencer partnerships.',
+          impact:'+3,200 bookings Q3', confidence:76, metric:{label:'NE India Growth', value:'+48.6%'}, color:'#f59e0b' },
+        { id:'ins-006', priority:6, type:'risk', icon:'⚠️', title:'CPA Optimization Required',
+          body:'Google Ads CPA (₹890) is 11% above average. Reallocate to Referral (₹280 CPA) and Email (₹310 CPA).',
+          impact:'-₹120 avg CPA', confidence:91, metric:{label:'Google Ads CPA', value:'₹890'}, color:'#f87171' }
+      ];
+      return { success: true, count: insights.length, data: insights };
+    }
+    
+    if (pathname === '/alerts/notifications') {
+      const limit = parseInt(url.searchParams.get('limit')) || 5;
+      let notifs = [...demoData.alerts.notifications].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      if (limit) notifs = notifs.slice(0, limit);
+      return {
+        success: true,
+        unreadCount: notifs.filter(n => !n.read).length,
+        data: notifs
+      };
+    }
+  }
+  
+  if (method === 'POST') {
+    const body = opts.body ? JSON.parse(opts.body) : {};
+    
+    if (pathname === '/campaigns') {
+      const { name, channel, budget, region, targetSegment, creativeType, startDate, endDate } = body;
+      if (!name || !channel || !budget) {
+        return { success: false, message: 'name, channel, and budget are required' };
+      }
+
+      const newCamp = {
+        id: 'camp-' + String(demoData.campaigns.length + 1).padStart(3, '0'),
+        name,
+        channel,
+        status: 'active',
+        startDate: startDate || new Date().toISOString().split('T')[0],
+        endDate: endDate || '',
+        budget: Number(budget),
+        spend: 0,
+        revenue: 0,
+        reach: 0,
+        impressions: 0,
+        conversions: 0,
+        ctr: 0,
+        cpa: 0,
+        roi: 0,
+        engagementRate: 0,
+        region: region || 'Pan India',
+        targetSegment: targetSegment || 'Millennials',
+        creativeType: creativeType || 'Static Image',
+        performance: 0,
+        monthlyData: { reach: [0,0,0,0,0,0], conversions: [0,0,0,0,0,0] },
+        tags: ['new']
+      };
+
+      demoData.campaigns.push(newCamp);
+      return { success: true, message: 'Campaign created', data: newCamp };
+    }
+    
+    if (pathname === '/optimizer/simulate') {
+      const { allocations, totalBudget } = body;
+      const channelROI = { 'Social Media': 4.1, 'Influencer': 5.6, 'Email': 3.2, 'Search': 2.9, 'Referral': 4.8, 'Display Ads': 3.0, 'Content': 2.4 };
+      const channelCPA = { 'Social Media': 620, 'Influencer': 540, 'Email': 310, 'Search': 890, 'Referral': 280, 'Display Ads': 740, 'Content': 210 };
+
+      const results = allocations.map(a => {
+        const roi      = channelROI[a.channel] || 3.0;
+        const cpa      = channelCPA[a.channel] || 600;
+        const amount   = Math.round((a.pct / 100) * totalBudget);
+        const revenue  = Math.round(amount * roi);
+        const convs    = Math.round(amount / cpa);
+        return { channel: a.channel, pct: a.pct, amount, roi, revenue, conversions: convs, cpa };
+      });
+
+      const totalRevenue    = results.reduce((s, r) => s + r.revenue, 0);
+      const weightedROI     = +(totalRevenue / totalBudget).toFixed(2);
+      const totalConversions = results.reduce((s, r) => s + r.conversions, 0);
+
+      return {
+        success: true,
+        data: results,
+        summary: { totalBudget, totalRevenue, weightedROI, totalConversions, blendedCPA: Math.round(totalBudget / totalConversions) }
+      };
+    }
+    
+    if (pathname === '/analytics/simulate-churn') {
+      const { supportSLA, promoDiscount, npsScore, loyaltyMultiplier } = body;
+      const slaEffect = Math.max(0, (parseFloat(supportSLA || 4) - 4) * 0.4);
+      const promoEffect = parseFloat(promoDiscount || 0) * 0.15;
+      const npsEffect = (parseFloat(npsScore || 67) - 67) * 0.25;
+      const loyaltyEffect = (parseFloat(loyaltyMultiplier || 1) - 1) * 1.5;
+
+      let predictedChurn = 28.7 + slaEffect - promoEffect - npsEffect - loyaltyEffect;
+      predictedChurn = Math.max(5.0, Math.min(65.0, predictedChurn));
+
+      const baselineUsers = 84320;
+      const retainedUsers = Math.round(baselineUsers * (1 - predictedChurn / 100));
+      const churnedUsers = baselineUsers - retainedUsers;
+      const avgUserValue = 4200;
+      const financialImpact = Math.round((retainedUsers - (baselineUsers * (1 - 0.287))) * avgUserValue);
+
+      let riskCategory = 'Low Risk';
+      let riskColor = '#4ade80';
+      if (predictedChurn > 35) {
+        riskCategory = 'High Risk';
+        riskColor = '#f87171';
+      } else if (predictedChurn > 20) {
+        riskCategory = 'Medium Risk';
+        riskColor = '#f59e0b';
+      }
+
+      return {
+        success: true,
+        predictedChurn: +predictedChurn.toFixed(1),
+        retainedUsers,
+        churnedUsers,
+        financialImpact,
+        riskCategory,
+        riskColor
+      };
+    }
+    
+    if (pathname === '/analytics/simulate-acquisition') {
+      const { channel, spend } = body;
+      const budget = parseFloat(spend || 500000);
+      const channelStats = {
+        'Influencer':   { baseROI: 5.6, avgCPA: 450, reachPerRupee: 0.65 },
+        'Social Media': { baseROI: 4.1, avgCPA: 380, reachPerRupee: 0.85 },
+        'Search':       { baseROI: 2.9, avgCPA: 680, reachPerRupee: 0.40 },
+        'Email':        { baseROI: 3.2, avgCPA: 310, reachPerRupee: 0.50 },
+        'Referral':     { baseROI: 4.8, avgCPA: 280, reachPerRupee: 0.35 },
+        'Content':      { baseROI: 2.4, avgCPA: 210, reachPerRupee: 0.70 },
+        'Display Ads':  { baseROI: 3.0, avgCPA: 740, reachPerRupee: 0.55 }
+      };
+
+      const stats = channelStats[channel] || channelStats['Social Media'];
+      const scaleFactor = Math.max(0.5, 1 - (budget / 10000000) * 0.15);
+      const projectedROI = +(stats.baseROI * scaleFactor).toFixed(2);
+      const projectedCPA = Math.round(stats.avgCPA * (1 + (budget / 5000000) * 0.1));
+      const conversions = Math.round(budget / projectedCPA);
+      const reach = Math.round(budget * stats.reachPerRupee * (1 + (Math.random()*0.1 - 0.05)));
+      const revenue = Math.round(budget * projectedROI);
+      const netProfit = revenue - budget;
+
+      return {
+        success: true,
+        channel,
+        spend: budget,
+        projectedROI,
+        projectedCPA,
+        conversions,
+        reach,
+        revenue,
+        netProfit
+      };
+    }
+  }
+  
+  if (method === 'PUT') {
+    const body = opts.body ? JSON.parse(opts.body) : {};
+    
+    const campIdMatch = pathname.match(/^\/campaigns\/(camp-\d+)$/);
+    if (campIdMatch) {
+      const id = campIdMatch[1];
+      const idx = demoData.campaigns.findIndex(c => c.id === id);
+      if (idx !== -1) {
+        demoData.campaigns[idx] = { ...demoData.campaigns[idx], ...body, id: demoData.campaigns[idx].id };
+        return { success: true, message: 'Campaign updated', data: demoData.campaigns[idx] };
+      }
+      return { success: false, message: 'Campaign not found' };
+    }
+    
+    const notifIdMatch = pathname.match(/^\/alerts\/notifications\/(notif-\d+)\/read$/);
+    if (notifIdMatch) {
+      const id = notifIdMatch[1];
+      const notif = demoData.alerts.notifications.find(n => n.id === id);
+      if (notif) notif.read = true;
+      return { success: true, message: 'Marked as read' };
+    }
+    
+    if (pathname === '/alerts/notifications/read-all') {
+      demoData.alerts.notifications.forEach(n => n.read = true);
+      return { success: true, message: 'All notifications marked as read' };
+    }
+  }
+  
+  return null;
+}
+
 async function apiFetch(path, opts={}) {
+  if (isDemoMode) {
+    return await handleDemoRequest(path, opts);
+  }
   try {
     const r = await fetch(API + path, opts);
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -466,7 +1389,7 @@ function filterTable() {
 
 async function pauseToggle(id, cur) {
   const newStatus = cur === 'paused' ? 'active' : 'paused';
-  await fetch(`${API}/campaigns/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ status:newStatus }) });
+  await apiFetch(`/campaigns/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ status:newStatus }) });
   showToast(`Campaign ${newStatus}`, 'success');
   filterTable();
 }
@@ -1090,10 +2013,9 @@ async function submitCampaign(e) {
     startDate:     document.getElementById('form-start').value,
     endDate:       document.getElementById('form-end').value,
   };
-  const r = await fetch(`${API}/campaigns`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-  const res = await r.json();
-  if (res.success) { showToast('🚀 Campaign launched!', 'success'); closeCampaignModal(); loadTable(); }
-  else showToast(res.message || 'Error creating campaign', 'error');
+  const res = await apiFetch('/campaigns', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+  if (res && res.success) { showToast('🚀 Campaign launched!', 'success'); closeCampaignModal(); loadTable(); }
+  else showToast(res?.message || 'Error creating campaign', 'error');
 }
 
 function doExport(type) {
@@ -1121,18 +2043,32 @@ if (typeof io !== 'undefined') {
 
 // ── Init ──────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  initSocket();
-  await loadOverview();
-  loadTable();
-  loadNotifications();
+  let isBackendLive = false;
+  const urlParams = new URLSearchParams(window.location.search);
+  const forceDemo = urlParams.get('demo') === 'true';
 
-  const health = await apiFetch('/health');
-  if (health) {
+  if (!forceDemo) {
+    try {
+      const healthRes = await fetch(API + '/health');
+      if (healthRes.ok) {
+        const health = await healthRes.json();
+        if (health && health.status === 'ok') {
+          isBackendLive = true;
+        }
+      }
+    } catch (err) {
+      console.warn('Backend is offline or unreachable. Switching to client-side demo mode.', err);
+    }
+  }
+
+  if (isBackendLive) {
+    initSocket();
+    await loadOverview();
+    loadTable();
+    loadNotifications();
     showToast('🌿 GreenTrail Analytics Engine v3 Online', 'success');
-    console.log('[v3] Features:', health.features.join(', '));
-    console.log('[v3] Connected clients:', health.connectedClients);
   } else {
-    showToast('⚠️ Backend offline', 'error');
+    await initDemoMode();
   }
 });
 
