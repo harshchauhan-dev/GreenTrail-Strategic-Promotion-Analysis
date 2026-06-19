@@ -1,0 +1,16 @@
+{
+  "rules": [
+    { "id": "rule-001", "metric": "cpa", "condition": "gt", "threshold": 900, "severity": "warning", "message": "Cost Per Acquisition exceeded ₹900 threshold", "active": true },
+    { "id": "rule-002", "metric": "retentionRate", "condition": "lt", "threshold": 65, "severity": "critical", "message": "Retention rate dropped below 65%", "active": true },
+    { "id": "rule-003", "metric": "roi", "condition": "lt", "threshold": 2.5, "severity": "warning", "message": "Campaign ROI below 2.5× target", "active": true },
+    { "id": "rule-004", "metric": "emailOpenRate", "condition": "lt", "threshold": 25, "severity": "info", "message": "Email open rate below industry average", "active": true },
+    { "id": "rule-005", "metric": "npsScore", "condition": "gt", "threshold": 70, "severity": "success", "message": "NPS Score hit new record high!", "active": true }
+  ],
+  "notifications": [
+    { "id": "notif-001", "ruleId": "rule-001", "severity": "warning", "title": "CPA Alert — Google Ads", "body": "Google Ads CPA reached ₹890 — approaching ₹900 threshold. Consider pausing low-performing ad groups.", "campaignId": "camp-004", "timestamp": "2026-06-19T10:14:00Z", "read": false },
+    { "id": "notif-002", "ruleId": "rule-005", "severity": "success", "title": "🎉 NPS Record: 67", "body": "NPS Score reached 67 — highest in GreenTrail history. Q2 advocacy campaigns are resonating strongly.", "campaignId": null, "timestamp": "2026-06-18T16:30:00Z", "read": false },
+    { "id": "notif-003", "ruleId": "rule-003", "severity": "warning", "title": "Trail Safety Blog ROI Low", "body": "Content campaign ROI at 2.4× — below 2.5× minimum. Review keyword targeting and update call-to-action copy.", "campaignId": "camp-007", "timestamp": "2026-06-17T09:45:00Z", "read": true },
+    { "id": "notif-004", "ruleId": "rule-002", "severity": "info", "title": "Retention Trending Up", "body": "May cohort shows 82% Day-30 retention — highest cohort performance in 2026.", "campaignId": null, "timestamp": "2026-06-16T14:22:00Z", "read": true },
+    { "id": "notif-005", "ruleId": "rule-001", "severity": "success", "title": "EcoHiker Collab Milestone", "body": "EcoHiker Collab surpassed 50,000 conversions. Campaign is now the top-performing in Q2 history.", "campaignId": "camp-002", "timestamp": "2026-06-15T11:00:00Z", "read": true }
+  ]
+}

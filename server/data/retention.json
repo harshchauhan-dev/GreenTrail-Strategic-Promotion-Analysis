@@ -1,0 +1,50 @@
+{
+  "cohorts": {
+    "Jan-2026": {
+      "label": "Jan Cohort",
+      "size": 12400,
+      "monthly": [100, 72, 65, 61, 58, 55]
+    },
+    "Feb-2026": {
+      "label": "Feb Cohort",
+      "size": 13800,
+      "monthly": [null, 100, 74, 68, 63, 60]
+    },
+    "Mar-2026": {
+      "label": "Mar Cohort",
+      "size": 14600,
+      "monthly": [null, null, 100, 76, 70, 66]
+    },
+    "Apr-2026": {
+      "label": "Apr Cohort",
+      "size": 16200,
+      "monthly": [null, null, null, 100, 78, 71]
+    },
+    "May-2026": {
+      "label": "May Cohort",
+      "size": 17400,
+      "monthly": [null, null, null, null, 100, 82]
+    }
+  },
+  "loyaltyTiers": [
+    { "tier": "🌱 Seedling (New)", "pct": 45, "count": 37944, "avgRevenue": 1200, "color": "#a3e635" },
+    { "tier": "🌿 Trailblazer", "pct": 30, "count": 25296, "avgRevenue": 2800, "color": "#4ade80" },
+    { "tier": "🏔️ Summit Member", "pct": 18, "count": 15178, "avgRevenue": 5600, "color": "#34d399" },
+    { "tier": "⛰️ Peak Elite", "pct": 7, "count": 5902, "avgRevenue": 11200, "color": "#10b981" }
+  ],
+  "churnReasons": [
+    { "reason": "Lack of Trail Variety", "pct": 28, "count": 4812, "color": "#f87171" },
+    { "reason": "Price / Value", "pct": 21, "count": 3612, "color": "#f59e0b" },
+    { "reason": "App UX Issues", "pct": 18, "count": 3096, "color": "#38bdf8" },
+    { "reason": "No Social Features", "pct": 14, "count": 2408, "color": "#c084fc" },
+    { "reason": "Competitor Switch", "pct": 11, "count": 1892, "color": "#4ade80" },
+    { "reason": "Other", "pct": 8, "count": 1376, "color": "#567060" }
+  ],
+  "reEngagementStats": {
+    "lapsedUsers": 17196,
+    "reActivated": 4812,
+    "reActivationRate": 28.0,
+    "avgDaysLapsed": 67,
+    "topReEngagementChannel": "Email"
+  }
+}

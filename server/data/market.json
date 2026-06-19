@@ -1,0 +1,47 @@
+{
+  "segments": [
+    { "label": "Millennials 25–38", "pct": 54, "growth": 12.4, "avgSpend": 4200, "topChannel": "Instagram", "color": "#4ade80" },
+    { "label": "Gen Z 18–24", "pct": 18, "growth": 31.2, "avgSpend": 2800, "topChannel": "YouTube", "color": "#38bdf8" },
+    { "label": "Families", "pct": 16, "growth": 22.0, "avgSpend": 6800, "topChannel": "Facebook", "color": "#c084fc" },
+    { "label": "Seniors 50+", "pct": 8, "growth": 8.4, "avgSpend": 5200, "topChannel": "Email", "color": "#f59e0b" },
+    { "label": "Corporate Groups", "pct": 4, "growth": 15.6, "avgSpend": 18000, "topChannel": "LinkedIn", "color": "#f87171" }
+  ],
+  "motivators": [
+    { "label": "Nature Experience", "score": 9.2, "pct": 88, "color": "#4ade80" },
+    { "label": "Health & Wellness", "score": 8.7, "pct": 83, "color": "#22c55e" },
+    { "label": "Eco-Consciousness", "score": 8.4, "pct": 80, "color": "#a3e635" },
+    { "label": "Unique Trails", "score": 8.1, "pct": 77, "color": "#34d399" },
+    { "label": "Adventure", "score": 7.9, "pct": 74, "color": "#38bdf8" },
+    { "label": "Social Sharing", "score": 7.2, "pct": 68, "color": "#c084fc" },
+    { "label": "Value for Money", "score": 6.8, "pct": 64, "color": "#f59e0b" }
+  ],
+  "competitors": [
+    { "name": "GreenTrail", "share": 31, "color": "#4ade80", "trend": "+4.2%", "nps": 67 },
+    { "name": "TrailBlazers Co.", "share": 24, "color": "#38bdf8", "trend": "+1.8%", "nps": 54 },
+    { "name": "EcoRoutes", "share": 18, "color": "#c084fc", "trend": "-0.6%", "nps": 48 },
+    { "name": "WildExplore", "share": 14, "color": "#f59e0b", "trend": "+0.2%", "nps": 45 },
+    { "name": "Others", "share": 13, "color": "#567060", "trend": "-5.6%", "nps": 38 }
+  ],
+  "funnel": [
+    { "stage": "Brand Awareness", "users": 2400000, "pct": 100, "color": "#4ade80" },
+    { "stage": "Website Visit", "users": 720000, "pct": 30, "color": "#22c55e" },
+    { "stage": "App Install", "users": 216000, "pct": 9, "color": "#a3e635" },
+    { "stage": "Trail Browse", "users": 148320, "pct": 6.2, "color": "#34d399" },
+    { "stage": "Booking Initiated", "users": 97490, "pct": 4.1, "color": "#10b981" },
+    { "stage": "Booking Completed", "users": 84320, "pct": 3.5, "color": "#059669" }
+  ],
+  "geography": [
+    { "region": "Western Ghats", "bookings": 28400, "growth": 18.2, "revenue": 7200000, "topTrail": "Kudremukh Trek" },
+    { "region": "Himachal Pradesh", "bookings": 22800, "growth": 12.4, "revenue": 5900000, "topTrail": "Hampta Pass" },
+    { "region": "Uttarakhand", "bookings": 18600, "growth": 22.1, "revenue": 4800000, "topTrail": "Valley of Flowers" },
+    { "region": "Northeast India", "bookings": 6400, "growth": 48.6, "revenue": 1600000, "topTrail": "Dzukou Valley" },
+    { "region": "Rajasthan", "bookings": 4200, "growth": 34.2, "revenue": 1100000, "topTrail": "Aravalli Safari" },
+    { "region": "South India", "bookings": 3920, "growth": 8.8, "revenue": 1010000, "topTrail": "Coorg Trail" }
+  ],
+  "surveyMeta": {
+    "totalRespondents": 4820,
+    "surveyDate": "2026-05-15",
+    "margin": 1.4,
+    "topDiscoveryChannel": "Peer Recommendations (43%)"
+  }
+}

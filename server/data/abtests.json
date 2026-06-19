@@ -1,0 +1,66 @@
+[
+  {
+    "id": "ab-001",
+    "name": "Reel Duration — 15s vs 30s",
+    "hypothesis": "30-second reels drive higher trail bookings than 15-second reels",
+    "channel": "Social Media",
+    "campaign": "camp-001",
+    "status": "running",
+    "startDate": "2026-05-01",
+    "endDate": "2026-06-30",
+    "variants": {
+      "A": { "name": "15-second Reel", "impressions": 420000, "conversions": 18900, "revenue": 1890000, "ctr": 4.5 },
+      "B": { "name": "30-second Reel", "impressions": 418000, "conversions": 24720, "revenue": 2472000, "ctr": 5.9 }
+    },
+    "stats": { "pValue": 0.012, "confidence": 98.8, "lift": 30.8, "winner": "B", "significance": "high" },
+    "insight": "30-second reels convert 30.8% better — recommend standardizing all trail reels to 30s format."
+  },
+  {
+    "id": "ab-002",
+    "name": "Email Subject Line — CTA Urgency",
+    "hypothesis": "Urgency-framed subject lines increase email open rates",
+    "channel": "Email",
+    "campaign": "camp-003",
+    "status": "running",
+    "startDate": "2026-05-15",
+    "endDate": "2026-07-15",
+    "variants": {
+      "A": { "name": "Monsoon Trails Await You", "impressions": 41000, "conversions": 13120, "revenue": 650000, "ctr": 32.0 },
+      "B": { "name": "⏰ Last 48 hrs: Monsoon Booking Open", "impressions": 41000, "conversions": 15990, "revenue": 800000, "ctr": 39.0 }
+    },
+    "stats": { "pValue": 0.031, "confidence": 96.9, "lift": 21.9, "winner": "B", "significance": "medium" },
+    "insight": "Urgency framing drives 21.9% more opens. Roll out to all seasonal campaigns."
+  },
+  {
+    "id": "ab-003",
+    "name": "Referral Reward — ₹200 vs ₹400",
+    "hypothesis": "Higher referral rewards unlock a non-linear spike in referral rate",
+    "channel": "Referral",
+    "campaign": "camp-005",
+    "status": "running",
+    "startDate": "2026-04-20",
+    "endDate": "2026-07-20",
+    "variants": {
+      "A": { "name": "₹200 Referral Credit", "impressions": 15500, "conversions": 4340, "revenue": 1170000, "ctr": 28.0 },
+      "B": { "name": "₹400 Referral Credit", "impressions": 15400, "conversions": 6160, "revenue": 1680000, "ctr": 40.0 }
+    },
+    "stats": { "pValue": 0.004, "confidence": 99.6, "lift": 42.0, "winner": "B", "significance": "high" },
+    "insight": "₹400 reward delivers 42% more conversions. Net revenue uplift after cost: +₹3.1L."
+  },
+  {
+    "id": "ab-004",
+    "name": "Landing Page Hero — Trail Video vs Static",
+    "hypothesis": "Autoplay trail video on landing page reduces bounce rate",
+    "channel": "Search",
+    "campaign": "camp-004",
+    "status": "completed",
+    "startDate": "2026-03-01",
+    "endDate": "2026-04-15",
+    "variants": {
+      "A": { "name": "Static Hero Image", "impressions": 82000, "conversions": 3280, "revenue": 1640000, "ctr": 4.0 },
+      "B": { "name": "Autoplay Video Hero", "impressions": 81000, "conversions": 4374, "revenue": 2187000, "ctr": 5.4 }
+    },
+    "stats": { "pValue": 0.001, "confidence": 99.9, "lift": 33.4, "winner": "B", "significance": "high" },
+    "insight": "Video hero reduced bounce by 18% and boosted conversion 33.4%. Default to video heroes site-wide."
+  }
+]

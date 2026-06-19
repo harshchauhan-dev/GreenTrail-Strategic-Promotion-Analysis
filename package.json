@@ -1,0 +1,25 @@
+{
+  "name": "greentrail-analytics",
+  "version": "3.0.0",
+  "description": "GreenTrail Strategic Promotion Analysis — Advanced Full-Stack Analytics Platform",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "nodemon server/server.js"
+  },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "node-cache": "^5.1.2",
+    "socket.io": "^4.6.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": ["greentrail", "analytics", "dashboard", "marketing", "real-time"],
+  "author": "GreenTrail Analytics Team",
+  "license": "MIT"
+}

@@ -1,0 +1,75 @@
+{
+  "quarters": {
+    "Q3-2025": {
+      "totalUsers": 61200,
+      "campaignReach": 1200000,
+      "promoROI": 2.4,
+      "retentionRate": 58.4,
+      "npsScore": 52,
+      "greenScore": 82,
+      "cpa": 980,
+      "emailOpenRate": 22.1,
+      "socialFollowerGrowth": 5200,
+      "totalRevenue": 8400000,
+      "totalSpend": 3500000
+    },
+    "Q4-2025": {
+      "totalUsers": 68400,
+      "campaignReach": 1560000,
+      "promoROI": 2.9,
+      "retentionRate": 62.1,
+      "npsScore": 57,
+      "greenScore": 84,
+      "cpa": 920,
+      "emailOpenRate": 25.8,
+      "socialFollowerGrowth": 7100,
+      "totalRevenue": 11200000,
+      "totalSpend": 3860000
+    },
+    "Q1-2026": {
+      "totalUsers": 74980,
+      "campaignReach": 1870000,
+      "promoROI": 3.2,
+      "retentionRate": 67.1,
+      "npsScore": 62,
+      "greenScore": 85,
+      "cpa": 840,
+      "emailOpenRate": 28.4,
+      "socialFollowerGrowth": 8200,
+      "totalRevenue": 14600000,
+      "totalSpend": 4560000
+    },
+    "Q2-2026": {
+      "totalUsers": 84320,
+      "campaignReach": 2400000,
+      "promoROI": 3.8,
+      "retentionRate": 71.3,
+      "npsScore": 67,
+      "greenScore": 88,
+      "cpa": 812,
+      "emailOpenRate": 34.2,
+      "socialFollowerGrowth": 9840,
+      "totalRevenue": 20610000,
+      "totalSpend": 5420000
+    }
+  },
+  "targets": {
+    "Q2-2026": {
+      "totalUsers": 80000,
+      "campaignReach": 2100000,
+      "promoROI": 3.5,
+      "retentionRate": 70.0,
+      "npsScore": 65,
+      "greenScore": 87,
+      "cpa": 800,
+      "emailOpenRate": 35.0,
+      "socialFollowerGrowth": 12000
+    }
+  },
+  "liveKPIs": {
+    "activeUsers": 1284,
+    "trailsBooked": 342,
+    "revenueToday": 284600,
+    "avgSessionMin": 8.4
+  }
+}
