@@ -3,7 +3,9 @@
    Socket.io + REST API + Advanced Analytics
    ================================================ */
 
-const API = 'http://localhost:3000/api';
+const API = (window.location.protocol === 'file:')
+  ? 'http://localhost:3000/api'
+  : window.location.origin + '/api';
 let socket = null;
 let overviewChartInstance = null;
 let optDoughnutInstance   = null;
@@ -190,7 +192,10 @@ const feedItems = [];
 const MAX_FEED  = 5;
 
 function initSocket() {
-  socket = io('http://localhost:3000');
+  const socketUrl = (window.location.protocol === 'file:')
+    ? 'http://localhost:3000'
+    : window.location.origin;
+  socket = io(socketUrl);
   const wsEl = document.getElementById('ws-status');
 
   socket.on('connect', () => {
