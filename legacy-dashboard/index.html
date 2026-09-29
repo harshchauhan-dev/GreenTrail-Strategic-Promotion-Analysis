@@ -153,8 +153,30 @@
         <div class="kpi-card skeleton-card" style="--accent:#a3e635"><div class="kpi-icon">💰</div><div class="kpi-body"><div class="kpi-label">Promo ROI</div><div class="kpi-value" id="ov-roi"><span class="skeleton-text"></span></div><div class="kpi-delta" id="ov-roi-d"></div></div></div>
         <div class="kpi-card skeleton-card" style="--accent:#f59e0b"><div class="kpi-icon">❤️</div><div class="kpi-body"><div class="kpi-label">Retention Rate</div><div class="kpi-value" id="ov-ret"><span class="skeleton-text"></span></div><div class="kpi-delta" id="ov-ret-d"></div></div></div>
         <div class="kpi-card skeleton-card" style="--accent:#38bdf8"><div class="kpi-icon">⭐</div><div class="kpi-body"><div class="kpi-label">NPS Score</div><div class="kpi-value" id="ov-nps"><span class="skeleton-text"></span></div><div class="kpi-delta" id="ov-nps-d"></div></div></div>
-        <div class="kpi-card skeleton-card" style="--accent:#c084fc"><div class="kpi-icon">💎</div><div class="kpi-body"><div class="kpi-label">Total Revenue</div><div class="kpi-value" id="ov-rev"><span class="skeleton-text"></span></div><div class="kpi-delta" id="ov-rev-d"></div></div></div>
       </div>
+      
+      <!-- Real-Time Data Tracking Studio & Streaming Engine -->
+      <div class="chart-card real-time-studio-card" style="margin-bottom: 20px; border: 1px solid rgba(74, 222, 128, 0.25); background: linear-gradient(145deg, rgba(19, 36, 24, 0.8), rgba(11, 20, 14, 0.95)); backdrop-filter: blur(12px);">
+        <div class="chart-header" style="flex-wrap: wrap; gap: 12px;">
+          <div style="display:flex; align-items:center; gap: 10px;">
+            <span class="live-dot" style="background:#4ade80; box-shadow:0 0 10px #4ade80;"></span>
+            <div>
+              <div class="chart-title" style="margin:0; font-size: 16px; font-weight: 700; color: #f0fdf4;">⚡ Real-Time Live Data Stream Tracking</div>
+              <div style="font-size: 11px; color: #8ba99a;">Rolling WebSocket telemetry (20-point live sliding buffer)</div>
+            </div>
+          </div>
+          <div class="chart-actions" style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;">
+            <span class="rt-metric-badge" id="rt-metric-display" style="padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: rgba(74, 222, 128, 0.15); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3);">Metric: Active Users</span>
+            <button class="chart-btn active" id="rt-btn-users" onclick="setRealtimeMetric('users')">Active Users</button>
+            <button class="chart-btn" id="rt-btn-revenue" onclick="setRealtimeMetric('revenue')">Revenue Today</button>
+            <button class="chart-btn" id="rt-btn-booked" onclick="setRealtimeMetric('booked')">Trails Booked</button>
+            <button class="chart-btn" onclick="toggleRealtimePause()" id="btn-pause-rt">⏸️ Pause Stream</button>
+            <button class="btn-primary btn-sm" onclick="triggerManualPulseEvent()" style="padding: 4px 12px; font-size: 11px;">⚡ Trigger Pulse Event</button>
+          </div>
+        </div>
+        <canvas id="realtimeStreamChart" height="100"></canvas>
+      </div>
+
       <!-- SVG Gauges Row -->
       <div class="gauges-row">
         <div class="gauge-card"><canvas id="gauge-nps" width="140" height="140"></canvas><div class="gauge-label">NPS Score</div><div class="gauge-value" id="gauge-nps-val">67</div></div>
@@ -539,9 +561,34 @@
     <section class="section" id="insights">
       <div class="section-header"><h1>AI Strategic Insights</h1><p class="section-sub">API-computed recommendations and priority action items for Q3 2026</p></div>
       <div class="insights-hero">
-        <div class="ih-badge">✨ Q3 2026 Strategy Brief — AI Engine v3</div>
+        <div class="ih-badge">✨ Q3 2026 Strategy Brief — AI Engine v3.5</div>
         <h2 class="ih-title">GreenTrail is outperforming on core acquisition KPIs, but requires accelerated social growth and deeper loyalty engagement to sustain trajectory.</h2>
         <div class="ih-meta"><span>📊 Based on 7 campaigns · 9 KPIs · 4 A/B Tests · 4,820 survey responses</span><span>🕐 Updated: <span id="insights-ts">—</span></span></div>
+      </div>
+
+      <!-- AI Copilot Prompt Studio -->
+      <div class="chart-card ai-copilot-card" style="margin-bottom: 20px; border: 1px solid rgba(192, 132, 252, 0.3); background: linear-gradient(135deg, rgba(20, 16, 35, 0.85), rgba(15, 23, 42, 0.95)); backdrop-filter: blur(12px);">
+        <div class="chart-title" style="color: #e9d5ff; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          <span>🤖 GreenTrail AI Strategic Copilot</span>
+          <span class="nav-badge" style="background:rgba(192,132,252,0.2);color:#c084fc">WebSocket AI Query Engine</span>
+        </div>
+        <p style="font-size:12px; color:#94a3b8; margin: 6px 0 14px">Ask any natural language question to analyze live tracking metrics, CPA anomalies, or Q3 channel budgets.</p>
+        <div style="display:flex; gap:10px; margin-bottom: 12px; flex-wrap: wrap;">
+          <input type="text" id="ai-query-input" placeholder="e.g., How can we reduce Google Ads CPA? or What is the best Q3 budget strategy?" class="cmd-input" style="flex:1; min-width:260px; background:#0f172a; border:1px solid #334155; color:#f8fafc; padding:10px 14px; border-radius:8px;" onkeypress="if(event.key==='Enter') sendAICopilotQuery()" />
+          <button class="btn-primary" onclick="sendAICopilotQuery()" style="background: linear-gradient(135deg, #a855f7, #6366f1); border:none; white-space:nowrap; padding: 10px 20px;">✨ Ask AI Copilot</button>
+        </div>
+        <div class="ai-prompt-pills" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px">
+          <button class="chip-pill" onclick="askAIPrompt('How to optimize CPA?')" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; border-radius:16px; padding:4px 12px; font-size:11px; cursor:pointer;">💡 How to optimize CPA?</button>
+          <button class="chip-pill" onclick="askAIPrompt('What is the forecast ROI for Q3?')" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; border-radius:16px; padding:4px 12px; font-size:11px; cursor:pointer;">📈 Q3 ROI Strategy</button>
+          <button class="chip-pill" onclick="askAIPrompt('How to reduce 30-day user churn?')" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; border-radius:16px; padding:4px 12px; font-size:11px; cursor:pointer;">🔄 Retention Strategy</button>
+        </div>
+        <div id="ai-response-box" style="display:none; padding:14px; border-radius:8px; background:rgba(30, 27, 75, 0.6); border:1px solid rgba(168, 85, 247, 0.4);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+            <span style="font-size:12px; font-weight:700; color:#c084fc" id="ai-resp-category">AI ANALYSIS</span>
+            <span style="font-size:11px; font-weight:600; color:#4ade80" id="ai-resp-impact">+14% Growth</span>
+          </div>
+          <div id="ai-resp-body" style="font-size:13px; color:#e2e8f0; line-height:1.5;"></div>
+        </div>
       </div>
       <div class="priority-grid" id="insights-grid">
         <div class="priority-card skeleton-card p1"><div class="sk-block" style="height:140px"></div></div>

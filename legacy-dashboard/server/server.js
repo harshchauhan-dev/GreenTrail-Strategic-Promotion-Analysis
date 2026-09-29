@@ -18,6 +18,8 @@ const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST'] } });
 const cache  = new NodeCache({ stdTTL: 60, checkperiod: 30 });
 
+app.set('io', io);
+
 const PORT = process.env.PORT || 3000;
 
 // ─── Production Middleware ────────────────────────
@@ -215,23 +217,46 @@ function randomRegion()   { return REGIONS[Math.floor(Math.random() * REGIONS.le
 function randomChannel()  { return CHANNELS[Math.floor(Math.random() * CHANNELS.length)]; }
 function randomCampaign() { return CAMPAIGNS[Math.floor(Math.random() * CAMPAIGNS.length)]; }
 
-// Live KPI state machine
+// Live KPI state machine & Rolling History Buffer
 let liveKPIState = { ...kpisData.liveKPIs };
+const liveKPIHistory = [];
+const MAX_HISTORY = 30;
+
 function updateLiveKPIs() {
-  liveKPIState.activeUsers   = Math.max(800, liveKPIState.activeUsers   + Math.floor(Math.random()*30 - 12));
-  liveKPIState.trailsBooked  = Math.max(200, liveKPIState.trailsBooked  + Math.floor(Math.random()*8  - 3));
-  liveKPIState.revenueToday  = Math.max(100000, liveKPIState.revenueToday + Math.floor(Math.random()*8000 - 3000));
+  liveKPIState.activeUsers   = Math.max(800, liveKPIState.activeUsers   + Math.floor(Math.random()*34 - 15));
+  liveKPIState.trailsBooked  = Math.max(200, liveKPIState.trailsBooked  + Math.floor(Math.random()*10 - 4));
+  liveKPIState.revenueToday  = Math.max(100000, liveKPIState.revenueToday + Math.floor(Math.random()*9000 - 3500));
   liveKPIState.avgSessionMin = Math.max(4, +(liveKPIState.avgSessionMin + (Math.random()*0.4 - 0.2)).toFixed(1));
-  return { ...liveKPIState, timestamp: new Date().toISOString() };
+  
+  const record = {
+    timestamp: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    activeUsers: liveKPIState.activeUsers,
+    trailsBooked: liveKPIState.trailsBooked,
+    revenueToday: liveKPIState.revenueToday,
+    avgSessionMin: liveKPIState.avgSessionMin
+  };
+  
+  liveKPIHistory.push(record);
+  if (liveKPIHistory.length > MAX_HISTORY) liveKPIHistory.shift();
+  
+  return { ...liveKPIState, history: liveKPIHistory, timestamp: new Date().toISOString() };
 }
+
+// Populate initial history
+for (let i = 0; i < 15; i++) {
+  updateLiveKPIs();
+}
+
+let simulationIntervalMs = 2000;
+let simulationTimer = null;
 
 io.on('connection', (socket) => {
   const clientIP = socket.handshake.address;
   console.log(`[Socket.io] Client connected: ${socket.id} from ${clientIP}`);
 
   // Send initial data on connect
-  socket.emit('connected', { message: '🌿 GreenTrail Real-Time Engine v3 Connected', socketId: socket.id, timestamp: new Date().toISOString() });
-  socket.emit('kpi-update', updateLiveKPIs());
+  socket.emit('connected', { message: '🌿 GreenTrail Real-Time Engine v3.5 Connected', socketId: socket.id, timestamp: new Date().toISOString() });
+  socket.emit('kpi-update', { ...liveKPIState, history: liveKPIHistory, timestamp: new Date().toISOString() });
 
   // Allow client to join specific rooms
   socket.on('join-room', (room) => {
@@ -241,7 +266,56 @@ io.on('connection', (socket) => {
 
   // Handle client requesting a KPI refresh
   socket.on('request-kpi', () => {
-    socket.emit('kpi-update', updateLiveKPIs());
+    socket.emit('kpi-update', { ...liveKPIState, history: liveKPIHistory, timestamp: new Date().toISOString() });
+  });
+
+  // Handle custom manual live event trigger
+  socket.on('trigger-live-event', (customEvent) => {
+    const kpis = updateLiveKPIs();
+    const evt = {
+      type: customEvent?.type || 'booking',
+      icon: customEvent?.icon || '⚡',
+      message: customEvent?.message || 'Manual Real-Time Pulse Event Triggered',
+      detail: customEvent?.detail || `Simulated action · ${randomRegion()}`,
+      kpis,
+      timestamp: new Date().toISOString()
+    };
+    io.emit('live-event', evt);
+    io.emit('kpi-update', kpis);
+  });
+
+  // Handle AI insights query copilot
+  socket.on('ai-insights-query', (query) => {
+    const q = (query || '').toLowerCase();
+    let responseText = '';
+    let category = 'general';
+    let impact = '+12% optimization';
+
+    if (q.includes('cpa') || q.includes('cost') || q.includes('ad')) {
+      responseText = `Analysis of live CPA data shows Google Ads CPA (₹890) is currently 14% higher than referral benchmarks (₹280). We recommend reallocating ₹1.5L from Search to Micro-Influencer partnerships in South/Northeast regions.`;
+      category = 'cpa-optimization';
+      impact = '-₹140 CPA reduction';
+    } else if (q.includes('churn') || q.includes('retention') || q.includes('cancel')) {
+      responseText = `Live retention tracking indicates 34.2% of churned users highlight lack of off-grid trail availability. Partnering with 12 new trekking operators in Himachal and Coorg will boost 30-day retention by +7.4%.`;
+      category = 'retention';
+      impact = '+6,200 retained users';
+    } else if (q.includes('roi') || q.includes('budget') || q.includes('spend')) {
+      responseText = `Current ROI analysis identifies #TrailsOfIndia (5.6× ROI) and EcoHiker Collab (4.1× ROI) as top performers. Optimal Q3 budget allocation model predicts max yield at 40% Influencer, 25% Social, 20% Referral.`;
+      category = 'budget-roi';
+      impact = '₹48.2L projected revenue';
+    } else {
+      responseText = `GreenTrail AI Engine evaluated current live metrics: Active Users (${liveKPIState.activeUsers}), Bookings Today (${liveKPIState.trailsBooked}), Revenue (₹${(liveKPIState.revenueToday/100000).toFixed(1)}L). Recommended priority: Expand Summit+ referral rewards to boost viral acquisition coefficient above 1.45.`;
+      category = 'general-insights';
+      impact = '+18% net growth';
+    }
+
+    socket.emit('ai-insights-response', {
+      query,
+      answer: responseText,
+      category,
+      impact,
+      timestamp: new Date().toISOString()
+    });
   });
 
   // Handle optimizer simulation via socket
@@ -334,17 +408,21 @@ io.on('connection', (socket) => {
   });
 });
 
-// Broadcast events every 3 seconds
-setInterval(() => {
-  if (io.engine.clientsCount === 0) return;
+// Real-Time Simulation Interval Engine
+function startRealtimeSimulation() {
+  if (simulationTimer) clearInterval(simulationTimer);
+  simulationTimer = setInterval(() => {
+    if (io.engine.clientsCount === 0) return;
 
-  const kpis  = updateLiveKPIs();
-  const evtFn = EVENT_POOLS[Math.floor(Math.random() * EVENT_POOLS.length)];
-  const event = { ...evtFn(), kpis, timestamp: new Date().toISOString() };
+    const kpis  = updateLiveKPIs();
+    const evtFn = EVENT_POOLS[Math.floor(Math.random() * EVENT_POOLS.length)];
+    const event = { ...evtFn(), kpis, timestamp: new Date().toISOString() };
 
-  io.emit('live-event', event);
-  io.emit('kpi-update', kpis);
-}, 3000);
+    io.emit('live-event', event);
+    io.emit('kpi-update', kpis);
+  }, simulationIntervalMs);
+}
+startRealtimeSimulation();
 
 // Broadcast aggregated analytics every 30 seconds
 setInterval(() => {

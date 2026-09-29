@@ -10,6 +10,10 @@ let socket = null;
 let overviewChartInstance = null;
 let optDoughnutInstance   = null;
 let forecastChartInstance = null;
+let realtimeStreamChartInstance = null;
+let currentRtMetric = 'users';
+let isRealtimePaused = false;
+let realtimeHistoryBuffer = [];
 let chartsBuilt = {};
 let campaignStoreLocal = [];
 let attributionModel   = 'linear';
@@ -144,6 +148,8 @@ function startDemoSocketSimulation() {
     animateTicker('tk-booked',  kpi.trailsBooked.toLocaleString('en-IN'));
     animateTicker('tk-revenue', fmtMoney(kpi.revenueToday));
     animateTicker('tk-session', kpi.avgSessionMin + ' min');
+    
+    updateRealtimeStreamChart(kpi);
     
     if (Math.random() > 0.4) {
       const idx = Math.floor(Math.random() * EVENT_POOLS.length);
@@ -1140,12 +1146,48 @@ function initSocket() {
     animateTicker('tk-booked',  kpi.trailsBooked.toLocaleString('en-IN'));
     animateTicker('tk-revenue', fmtMoney(kpi.revenueToday));
     animateTicker('tk-session', kpi.avgSessionMin + ' min');
+    
+    if (kpi.history && (!realtimeHistoryBuffer || realtimeHistoryBuffer.length === 0)) {
+      realtimeHistoryBuffer = [...kpi.history];
+      renderRealtimeStreamChart(realtimeHistoryBuffer);
+    } else {
+      updateRealtimeStreamChart(kpi);
+    }
   });
 
   socket.on('live-event', data => addFeedItem(data));
 
   socket.on('analytics-pulse', data => {
     if (data.anomaliesAlert > 0) showToast('⚠️ Anomaly detected in KPI stream', 'error', 4000);
+  });
+
+  socket.on('ai-insights-response', data => {
+    const box = document.getElementById('ai-response-box');
+    const body = document.getElementById('ai-resp-body');
+    const cat = document.getElementById('ai-resp-category');
+    const imp = document.getElementById('ai-resp-impact');
+    if (box) box.style.display = 'block';
+    if (cat) cat.textContent = (data.category || 'AI ANALYSIS').toUpperCase();
+    if (imp) imp.textContent = data.impact || '+10% Optimization';
+    if (body) body.textContent = data.answer;
+  });
+
+  socket.on('campaign-created', camp => {
+    showToast(`🚀 New Campaign Created: ${camp.name}`, 'success');
+    loadOverview();
+    loadTable();
+  });
+
+  socket.on('campaign-updated', camp => {
+    showToast(`📝 Campaign Updated: ${camp.name}`, 'info');
+    loadOverview();
+    loadTable();
+  });
+
+  socket.on('campaign-deleted', data => {
+    showToast(`🗑️ Campaign Deleted: ${data.name || data.id}`, 'warning');
+    loadOverview();
+    loadTable();
   });
 
   socket.on('predictive-churn-result', data => {
@@ -1188,6 +1230,216 @@ function initSocket() {
       profitEl.className = `orc-value ${data.netProfit >= 0 ? 'text-green' : 'text-red'}`;
     }
   });
+}
+
+// ── Real-Time Live Streaming Chart & Studio Controls ──
+function renderRealtimeStreamChart(historyData) {
+  const canvas = document.getElementById('realtimeStreamChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  if (realtimeStreamChartInstance) {
+    realtimeStreamChartInstance.destroy();
+    realtimeStreamChartInstance = null;
+  }
+
+  if (historyData && historyData.length > 0) {
+    realtimeHistoryBuffer = [...historyData];
+  }
+
+  const labels = realtimeHistoryBuffer.map(item => item.timestamp || '');
+  let values = [];
+  let labelText = 'Active Users';
+  let colorHex = C.green;
+  let bgGradient = 'rgba(74, 222, 128, 0.15)';
+
+  if (currentRtMetric === 'revenue') {
+    values = realtimeHistoryBuffer.map(item => item.revenueToday || 0);
+    labelText = 'Revenue Today (₹)';
+    colorHex = C.purple;
+    bgGradient = 'rgba(192, 132, 252, 0.15)';
+  } else if (currentRtMetric === 'booked') {
+    values = realtimeHistoryBuffer.map(item => item.trailsBooked || 0);
+    labelText = 'Trails Booked Today';
+    colorHex = C.blue;
+    bgGradient = 'rgba(56, 189, 248, 0.15)';
+  } else {
+    values = realtimeHistoryBuffer.map(item => item.activeUsers || 0);
+    labelText = 'Active Users';
+    colorHex = C.green;
+    bgGradient = 'rgba(74, 222, 128, 0.15)';
+  }
+
+  realtimeStreamChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: labelText,
+        data: values,
+        borderColor: colorHex,
+        backgroundColor: bgGradient,
+        fill: true,
+        tension: 0.35,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        pointBackgroundColor: colorHex
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 400 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: (ctx) => {
+              const val = ctx.raw;
+              if (currentRtMetric === 'revenue') return ` Revenue: ${fmtMoney(val)}`;
+              if (currentRtMetric === 'booked') return ` Bookings: ${val.toLocaleString('en-IN')}`;
+              return ` Active Users: ${val.toLocaleString('en-IN')}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { maxTicksLimit: 8, font: { size: 10 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function updateRealtimeStreamChart(kpi) {
+  if (isRealtimePaused) return;
+
+  const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const record = {
+    timestamp,
+    activeUsers: kpi.activeUsers,
+    trailsBooked: kpi.trailsBooked,
+    revenueToday: kpi.revenueToday,
+    avgSessionMin: kpi.avgSessionMin
+  };
+
+  realtimeHistoryBuffer.push(record);
+  if (realtimeHistoryBuffer.length > 25) realtimeHistoryBuffer.shift();
+
+  if (!realtimeStreamChartInstance) {
+    renderRealtimeStreamChart(realtimeHistoryBuffer);
+    return;
+  }
+
+  realtimeStreamChartInstance.data.labels = realtimeHistoryBuffer.map(item => item.timestamp);
+  
+  let values = [];
+  if (currentRtMetric === 'revenue') {
+    values = realtimeHistoryBuffer.map(item => item.revenueToday);
+  } else if (currentRtMetric === 'booked') {
+    values = realtimeHistoryBuffer.map(item => item.trailsBooked);
+  } else {
+    values = realtimeHistoryBuffer.map(item => item.activeUsers);
+  }
+
+  realtimeStreamChartInstance.data.datasets[0].data = values;
+  realtimeStreamChartInstance.update('none');
+}
+
+function setRealtimeMetric(metric) {
+  currentRtMetric = metric;
+  
+  ['users', 'revenue', 'booked'].forEach(m => {
+    const btn = document.getElementById(`rt-btn-${m}`);
+    if (btn) btn.classList.toggle('active', m === metric);
+  });
+  
+  const badge = document.getElementById('rt-metric-display');
+  if (badge) {
+    const labels = { users: 'Metric: Active Users', revenue: 'Metric: Revenue Today', booked: 'Metric: Trails Booked' };
+    badge.textContent = labels[metric] || 'Metric: Active Users';
+  }
+  
+  renderRealtimeStreamChart(realtimeHistoryBuffer);
+}
+
+function toggleRealtimePause() {
+  isRealtimePaused = !isRealtimePaused;
+  const btn = document.getElementById('btn-pause-rt');
+  if (btn) {
+    btn.textContent = isRealtimePaused ? '▶️ Resume Stream' : '⏸️ Pause Stream';
+    btn.classList.toggle('active', isRealtimePaused);
+  }
+  showToast(isRealtimePaused ? '⏸️ Real-Time Stream Paused' : '▶️ Real-Time Stream Resumed', 'info');
+}
+
+function triggerManualPulseEvent() {
+  if (socket && socket.connected) {
+    socket.emit('trigger-live-event', {
+      type: 'booking',
+      icon: '⚡',
+      message: 'High-Demand Flash Sale Triggered',
+      detail: 'Manual Real-Time Traffic Surge'
+    });
+  } else {
+    showToast('⚡ Simulated High-Volume Pulse Event', 'success');
+  }
+}
+
+function sendAICopilotQuery() {
+  const input = document.getElementById('ai-query-input');
+  if (!input || !input.value.trim()) return;
+  const query = input.value.trim();
+  askAIPrompt(query);
+}
+
+function askAIPrompt(query) {
+  const input = document.getElementById('ai-query-input');
+  if (input) input.value = query;
+  
+  const box = document.getElementById('ai-response-box');
+  const body = document.getElementById('ai-resp-body');
+  const cat = document.getElementById('ai-resp-category');
+  const imp = document.getElementById('ai-resp-impact');
+  
+  if (box) {
+    box.style.display = 'block';
+    body.innerHTML = '⚡ <em>GreenTrail AI Engine analyzing live stream metrics…</em>';
+    cat.textContent = 'THINKING...';
+    imp.textContent = '...';
+  }
+
+  if (socket && socket.connected) {
+    socket.emit('ai-insights-query', query);
+  } else {
+    setTimeout(() => {
+      const q = query.toLowerCase();
+      let answer = '';
+      let category = 'GENERAL AI ANALYSIS';
+      let impact = '+12.5% Gain';
+
+      if (q.includes('cpa') || q.includes('cost')) {
+        answer = 'Live CPA telemetry reveals Google Ads CPA (₹890) is 14% higher than referral benchmarks (₹280). Recommend reallocating ₹1.5L spend to Micro-Influencer partnerships in Northeast India.';
+        category = 'CPA OPTIMIZATION';
+        impact = '-₹140 CPA';
+      } else if (q.includes('churn') || q.includes('retention')) {
+        answer = 'Retention analysis shows 34% churn caused by lack of off-grid trail options. Onboarding 12 new trekking operators in Himachal and Coorg will boost 30-day retention by +7.4%.';
+        category = 'RETENTION STRATEGY';
+        impact = '+6,200 retained';
+      } else {
+        answer = `AI Engine evaluated current live active users (${demoData.kpis?.liveKPIs?.activeUsers || 1240}) and revenue. Priority action: Boost Summit+ referral bonuses to maximize viral coefficient.`;
+        category = 'STRATEGY RECOMMENDATION';
+        impact = '+18% net ROI';
+      }
+
+      if (cat) cat.textContent = category;
+      if (imp) imp.textContent = impact;
+      if (body) body.textContent = answer;
+    }, 400);
+  }
 }
 
 function animateTicker(id, val) {

@@ -101,6 +101,19 @@ router.post('/', (req, res) => {
   };
 
   campaignStore.push(newCamp);
+
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('campaign-created', newCamp);
+    io.emit('live-event', {
+      type: 'conversion',
+      icon: '🚀',
+      message: `New Campaign Created: ${newCamp.name}`,
+      detail: `Channel: ${newCamp.channel} · Budget: ₹${newCamp.budget}`,
+      timestamp: new Date().toISOString()
+    });
+  }
+
   res.status(201).json({ success: true, message: 'Campaign created', data: newCamp });
 });
 
@@ -110,6 +123,12 @@ router.put('/:id', (req, res) => {
   if (idx === -1) return res.status(404).json({ success: false, message: 'Campaign not found' });
 
   campaignStore[idx] = { ...campaignStore[idx], ...req.body, id: campaignStore[idx].id };
+
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('campaign-updated', campaignStore[idx]);
+  }
+
   res.json({ success: true, message: 'Campaign updated', data: campaignStore[idx] });
 });
 
@@ -117,7 +136,13 @@ router.put('/:id', (req, res) => {
 router.delete('/:id', (req, res) => {
   const idx = campaignStore.findIndex(c => c.id === req.params.id);
   if (idx === -1) return res.status(404).json({ success: false, message: 'Campaign not found' });
-  campaignStore.splice(idx, 1);
+  const deleted = campaignStore.splice(idx, 1)[0];
+
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('campaign-deleted', { id: req.params.id, name: deleted?.name });
+  }
+
   res.json({ success: true, message: 'Campaign deleted' });
 });
 
