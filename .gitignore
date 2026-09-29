@@ -57,4 +57,11 @@ ENV/
 backend/venv/
 backend/.venv/
 backend/__pycache__/
+platform/node_modules/
+platform/.next/
+platform/out/
+platform/backend/venv/
+platform/backend/.venv/
+platform/backend/__pycache__/
+platform/backend/*.db-journal
 

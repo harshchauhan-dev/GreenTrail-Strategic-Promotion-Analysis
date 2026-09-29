@@ -2402,3 +2402,29 @@ async function simulateAcquisition() {
     }
   }
 }
+
+/* ─── Sidebar Toggle & Keyboard Shortcut ─────────────────────── */
+function toggleSidebar() {
+  document.body.classList.toggle('sidebar-collapsed');
+  const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+  try {
+    localStorage.setItem('greentrail_sidebar_collapsed', isCollapsed ? '1' : '0');
+  } catch(e) {}
+}
+window.toggleSidebar = toggleSidebar;
+
+// Restore saved sidebar state on boot
+try {
+  if (localStorage.getItem('greentrail_sidebar_collapsed') === '1') {
+    document.body.classList.add('sidebar-collapsed');
+  }
+} catch(e) {}
+
+// Global Keyboard Shortcut: Ctrl+B or Cmd+B to toggle sidebar
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+    e.preventDefault();
+    toggleSidebar();
+  }
+});
+
